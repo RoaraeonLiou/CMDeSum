@@ -1,0 +1,6 @@
+{
+    "name": "java",
+    "max_code_len": 300,
+    "max_comment_len": 50,
+    "max_keywords_len": 30
+}
