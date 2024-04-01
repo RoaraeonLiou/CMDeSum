@@ -31,8 +31,6 @@ class MyDataset(Dataset):
         self.code_word2id = code_word2id
         self.comment_word2id = comment_word2id
         self.file = file
-        # if self.file == 'train':
-        #     self.file = 'test'
         print(self.file)
         base_path_one = os.path.join(root_path, "processed_data/csn", dataset, self.file)
         base_path_two = os.path.join(root_path, "data_embedding/csn", dataset, self.file)
@@ -123,11 +121,6 @@ class MyDataset(Dataset):
             deal with ast
             """
             self.ast_node.append(ast_node)
-            # adj1 = [adj.float() for adj in adj1]
-            # adj2 = [adj.float() for adj in adj2]
-            # adj3 = [adj.float() for adj in adj3]
-            # adj4 = [adj.float() for adj in adj4]
-            # adj5 = [adj.float() for adj in adj5]
             self.adj1.append(adj1)
             self.adj2.append(adj2)
             self.adj3.append(adj3)

@@ -47,13 +47,12 @@ class GCNBlock(nn.Module):
         self.gc1 = GraphConvolution(nfeat, nhid, batch_size)
         self.gc2 = GraphConvolution(nhid, nout, batch_size)
         self.dropout = dropout
-        # self.ffn = nn.Linear(nout, d_model)
+
 
     def forward(self, x, adj):
         x = F.relu(self.gc1(x, adj))
         x1 = F.dropout(x, self.dropout, training=self.training)
         outputs = F.relu(self.gc2(x1, adj)) + x
-        # outputs = self.ffn(outputs)
         return outputs
 
 
@@ -73,7 +72,4 @@ class ASTEmbedding(nn.Module):
 
         gcn_output = output3
         gcn_output = self.ffn(gcn_output)
-        # print(gcn_output)
-        # print(gcn_output.shape)
-
         return gcn_output

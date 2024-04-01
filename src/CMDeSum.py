@@ -6,7 +6,7 @@ from model.attention import *
 from model.base_units import *
 from model.beam_search import *
 from queue import PriorityQueue
-from torch.nn.modules import LayerNorm
+
 
 class CDecoderBlock(nn.Module):
     def __init__(self, i, d_model, d_ff, head_num, dropout=0.1):
@@ -263,6 +263,7 @@ class ADecoder(nn.Module):
 
         return self.dense(x), state
 
+
 class CoAttention(nn.Module):
     def __init__(self, d_model):
         super(CoAttention, self).__init__()
@@ -286,6 +287,7 @@ class CoAttention(nn.Module):
         coattended_language = self.linear_combined(torch.cat((language_features, weighted_vision), dim=-1))
 
         return coattended_vision, coattended_language
+
 
 class Multi_model(nn.Module):
     def __init__(self, d_model, head_num, dropout):
@@ -431,7 +433,8 @@ class Judge(nn.Module):
         self.dense = nn.Linear(d_model, vocab_size)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, source_code_enc, source_code_len, draft_0_enc, draft_0_len, draft_1_enc, draft_1_len, ast_enc, ast_len):
+    def forward(self, source_code_enc, source_code_len, draft_0_enc, draft_0_len, draft_1_enc, draft_1_len, ast_enc,
+                ast_len):
         b_ = source_code_enc.size(0)
         source_code_vec = torch.cumsum(source_code_enc, dim=1)[torch.arange(b_), source_code_len - 1]
         source_code_vec = torch.div(source_code_vec.T, source_code_len).T
@@ -453,14 +456,14 @@ class Judge(nn.Module):
         comment_1_ast_sim = self.cos_sim(comment_1_vec, ast_vec)
         comment_2_code_sim = self.cos_sim(comment_2_vec, source_code_vec)
         comment_2_ast_sim = self.cos_sim(comment_2_vec, ast_vec)
-        comment_1_weight = (comment_1_code_sim+comment_1_ast_sim) / 2
-        comment_2_weight = (comment_2_code_sim+comment_2_ast_sim) / 2
+        comment_1_weight = (comment_1_code_sim + comment_1_ast_sim) / 2
+        comment_2_weight = (comment_2_code_sim + comment_2_ast_sim) / 2
         comment_1_weight = comment_1_weight.view(b_, 1, 1).expand_as(draft_0_enc)
         comment_2_weight = comment_2_weight.view(b_, 1, 1).expand_as(draft_1_enc)
         a = draft_0_enc * comment_1_weight
         b = draft_1_enc * comment_2_weight
         if self.training:
-            comment_enc = (a+b) / 2
+            comment_enc = (a + b) / 2
             final_comment = self.dense(comment_enc)
             return final_comment
         else:
@@ -474,7 +477,6 @@ class Judge(nn.Module):
             comment_enc = (a + b) / 2
             final_comment = self.dense(comment_enc)
             return torch.argmax(final_comment.detach(), -1).tolist()
-
 
 
 class CMDeSum(nn.Module):
@@ -495,23 +497,22 @@ class CMDeSum(nn.Module):
         self.draft_encoder = CommentEncoder(self.comment_embedding, self.pos_encoding, d_model, d_ff, head_num,
                                             encoder_layer_num, dropout)
         self.ast_encoder = AstEncoder2(input_dim, hidden_num, output_dim, d_model, d_ff, batch_size, head_num,
-                                      encoder_layer_num, dropout)
+                                       encoder_layer_num, dropout)
 
         self.first_decoder = CodeGuidedDecoder(self.comment_embedding, self.pos_encoding, d_model,
-                                                                d_ff, head_num,
-                                                                decoder_layer_num, comment_vocab_size, bos_token,
-                                                                eos_token, max_comment_len,
-                                                                dropout, beam_width)
+                                               d_ff, head_num,
+                                               decoder_layer_num, comment_vocab_size, bos_token,
+                                               eos_token, max_comment_len,
+                                               dropout, beam_width)
         self.second_decoder = ASTGuidedDecoder(self.comment_embedding, self.pos_encoding, d_model,
-                                                               d_ff, head_num,
-                                                               decoder_layer_num, comment_vocab_size, bos_token,
-                                                               eos_token, max_comment_len,
-                                                               dropout, beam_width)
+                                               d_ff, head_num,
+                                               decoder_layer_num, comment_vocab_size, bos_token,
+                                               eos_token, max_comment_len,
+                                               dropout, beam_width)
 
         self.evaluator = Evaluator(d_model, d_ff, dropout)
 
         self.judge = Judge(d_model, d_ff, comment_vocab_size, dropout)
-
 
     def forward(self, source_code, comment, draft, keywords,
                 source_code_len, comment_len, draft_len, keywords_len, ast_node, adj_1, adj_2, adj_3, adj_4, adj_5,
@@ -528,18 +529,19 @@ class CMDeSum(nn.Module):
 
             memory = []
             comment_pred_1 = self.first_decoder(comment, code_enc, draft_enc, func_name_enc,
-                                                                 code_len, draft_len, func_name_len)
+                                                code_len, draft_len, func_name_len)
             memory.append(comment_pred_1)
             draft_1 = torch.argmax(comment_pred_1.detach(), -1)
             draft_len_1 = comment_len
             draft_1_enc, draft_len_1 = self.draft_encoder(draft_1, draft_len_1)
             comment_pred_2 = self.second_decoder(comment, code_enc, draft_1_enc, ast_enc, ast_embedding,
-                                                                 code_len, draft_len_1)
+                                                 code_len, draft_len_1)
             memory.append(comment_pred_2)
             draft_2 = torch.argmax(comment_pred_2.detach(), -1)
             draft_len_2 = comment_len
             draft_2_enc, draft_len_2 = self.draft_encoder(draft_2, draft_len_2)
-            comment_pred_3 = self.judge(code_enc, code_len, draft_1_enc, draft_len_1, draft_2_enc, draft_len_2, ast_enc, ast_node_len)
+            comment_pred_3 = self.judge(code_enc, code_len, draft_1_enc, draft_len_1, draft_2_enc, draft_len_2, ast_enc,
+                                        ast_node_len)
             memory.append(comment_pred_3)
             return memory, anchor, positive, negative
 
@@ -551,24 +553,25 @@ class CMDeSum(nn.Module):
             best_len = draft_len
 
             comment_pred_1 = self.first_decoder(comment, code_enc, draft_enc, func_name_enc,
-                                                                 code_len, draft_len, func_name_len)
+                                                code_len, draft_len, func_name_len)
             memory.append(comment_pred_1)
             draft_1 = pad_sequence([torch.tensor(x, device=comment.device) for x in comment_pred_1],
-                                 batch_first=True)
+                                   batch_first=True)
             draft_len_1 = torch.tensor([len(x) for x in comment_pred_1], device=comment.device)
             draft_enc_1, draft_len_1 = self.draft_encoder(draft_1, draft_len_1)
             best_result, best_enc, best_len = self.evaluator(code_enc, source_code_len, draft_enc_1, draft_len_1,
                                                              best_enc, best_len, best_result, comment_pred_1)
 
             comment_pred_2 = self.second_decoder(comment, code_enc, draft_enc_1, ast_enc, ast_embedding,
-                                                                 code_len, draft_len_1)
+                                                 code_len, draft_len_1)
             memory.append(comment_pred_2)
             draft_2 = pad_sequence([torch.tensor(x, device=comment.device) for x in comment_pred_2],
-                                 batch_first=True)
+                                   batch_first=True)
             draft_len_2 = torch.tensor([len(x) for x in comment_pred_2], device=comment.device)
             draft_enc_2, draft_len_2 = self.draft_encoder(draft_2, draft_len_2)
 
-            comment_pred_3 = self.judge(code_enc, code_len, draft_enc_1, draft_len_1, draft_enc_2, draft_len_2, ast_enc, ast_node_len)
+            comment_pred_3 = self.judge(code_enc, code_len, draft_enc_1, draft_len_1, draft_enc_2, draft_len_2, ast_enc,
+                                        ast_node_len)
             memory.append(comment_pred_3)
             draft_3 = pad_sequence([torch.tensor(x, device=comment.device) for x in comment_pred_3], batch_first=True)
             draft_len_3 = torch.tensor([len(x) for x in comment_pred_3], device=comment.device)
@@ -582,9 +585,8 @@ class CMDeSum(nn.Module):
 
 if __name__ == "__main__":
     c = CMDeSum(batch_size=32, d_model=512, d_ff=2048, head_num=8, encoder_layer_num=4, decoder_layer_num=6,
-            code_vocab_size=60000, comment_vocab_size=35877, bos_token=0, eos_token=1, max_comment_len=50,
-            clipping_distance=16, max_iter_num=3)
+                code_vocab_size=60000, comment_vocab_size=35877, bos_token=0, eos_token=1, max_comment_len=50,
+                clipping_distance=16, max_iter_num=3)
     total_num = sum(p.numel() for p in c.parameters())
     trainable_num = sum(p.numel() for p in c.parameters() if p.requires_grad)
     cnt = 0
-

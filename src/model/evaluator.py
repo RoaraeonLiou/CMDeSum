@@ -15,7 +15,7 @@ class Evaluator(nn.Module):
     def forward(self, source_code_enc, source_code_len, comment_enc, comment_len, template_enc, template_len,
                 best_result=None, cur_result=None):
         b_ = source_code_enc.size(0)
-        # global mean pooling
+
         source_code_vec = torch.cumsum(source_code_enc, dim=1)[torch.arange(b_), source_code_len - 1]
         source_code_vec = torch.div(source_code_vec.T, source_code_len).T
         source_code_vec = self.linear_proj2(self.dropout(F.relu(self.linear_proj1(source_code_vec))))
