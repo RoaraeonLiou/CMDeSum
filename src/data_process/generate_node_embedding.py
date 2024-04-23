@@ -7,7 +7,7 @@ max_node = 100
 max_value_len = 100
 sys.path.append(path)
 from vectorization_utils.node_embedding import NodeEmbedding
-bert_server_ip = "10.10.100.22"
+bert_server_ip = "xxx.xxx.xxx.xxx"
 
 def generate_all():
     input_paths = {
